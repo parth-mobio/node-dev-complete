@@ -19,7 +19,7 @@ const product = {
 const { label, price: prodPrice, author = "test" } = product;
 console.log(label, author, prodPrice);
 
-const transaction = (type, { label, author }) => {
+const transaction = (type, { label, author = "test" } = {}) => {
   console.log(label, author);
 };
 

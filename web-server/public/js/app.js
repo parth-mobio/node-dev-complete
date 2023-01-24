@@ -1,5 +1,3 @@
-console.log("this is js test from public static directory");
-
 const weatherForm = document.querySelector("form");
 const search = document.querySelector("input");
 const msg1 = document.querySelector("#msg-1");
