@@ -1,12 +1,15 @@
 const express = require("express");
 const router = new express.Router();
 const User = require("../models/user");
+const auth = require("../middleware/auth");
+const multer = require("multer");
+const sharp = require("sharp");
 
 router.post("/users", async (req, res) => {
-  const user = new User(req.body);
   try {
-    await user.save();
-    res.status(201).send(user);
+    const user = new User(req.body);
+    const token = await user.generateAuthToken();
+    res.status(201).send({ user, token });
   } catch (error) {
     res.status(400).send(error.message);
   }
@@ -15,12 +18,12 @@ router.post("/users", async (req, res) => {
 //login route
 router.post("/users/login", async (req, res) => {
   try {
-    console.log(req.body);
     const user = await User.findByCredentials(
       req.body.email,
       req.body.password
     );
-    res.send(user);
+    const token = await user.generateAuthToken();
+    res.send({ user, token });
   } catch (error) {
     res.status(400).send(error.message);
   }
@@ -35,6 +38,37 @@ router.get("/users", async (req, res) => {
   }
 });
 
+router.post("/users/logout", auth, async (req, res) => {
+  try {
+    req.user.tokens = req.user.tokens.filter((key) => {
+      return key.token !== req.token;
+    });
+
+    await req.user.save();
+    res.send("Logout Successful..!");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Logout Problem");
+  }
+});
+
+router.post("/users/logoutAll", auth, async (req, res) => {
+  try {
+    req.user.tokens = [];
+    await req.user.save();
+    res.send("Logout All Successful..!");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Logout All Problem");
+  }
+});
+
+//get logged in user profile
+router.get("/users/me", auth, async (req, res) => {
+  res.send(req.user);
+});
+
+// get any user by its id
 router.get("/users/:id", async (req, res) => {
   const _id = req.params.id;
 
@@ -50,7 +84,8 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
-router.patch("/users/:id", async (req, res) => {
+// update any user by id param
+/* router.patch("/users/:id", async (req, res) => {
   const bodyKeys = Object.keys(req.body); // converts request body object into Array ({} -> )
   const updatableFields = ["name", "age", "email", "password"];
   const isValidRequest = bodyKeys.every((bodyKey) =>
@@ -78,9 +113,39 @@ router.patch("/users/:id", async (req, res) => {
   } catch (error) {
     res.status(500).send(error.message);
   }
+}); */
+
+//updates fields for logged in user
+router.patch("/users/me", auth, async (req, res) => {
+  const bodyKeys = Object.keys(req.body); // converts request body object into Array ({} -> )
+  const updatableFields = ["name", "age", "email", "password"];
+  const isValidRequest = bodyKeys.every((bodyKey) =>
+    updatableFields.includes(bodyKey)
+  );
+
+  if (!isValidRequest) {
+    return res.status(404).send("Invalid Request Key or Value...!");
+  }
+
+  try {
+    bodyKeys.forEach((update) => (req.user[update] = req.body[update]));
+
+    await req.user.save();
+    // const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    //   new: true,
+    //   runValidators: true,
+    // });
+    /*     if (!user) {
+      return res.status(404).send();
+    } */
+    res.send(req.user);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
 });
 
-router.delete("/users/:id", async (req, res) => {
+// delete any user by id param
+/* router.delete("/users/:id", async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
@@ -89,6 +154,77 @@ router.delete("/users/:id", async (req, res) => {
     res.send(user);
   } catch (error) {
     res.status(500).send(error.message);
+  }
+}); */
+
+// delete logged in user
+router.delete("/users/me", auth, async (req, res) => {
+  try {
+    await req.user.remove();
+    res.send(req.user);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// Uploads profile pic
+const upload = multer({
+  limits: {
+    fileSize: 1000000,
+  },
+  fileFilter(req, file, cb) {
+    // if (!file.originalname.endsWith(".pdf")) {
+    //   return cb(new Error("Please upload PDF file only"));
+    // }
+
+    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+      return cb(new Error("Please upload Image (jpg/jpeg/png) file only"));
+    }
+    cb(undefined, true);
+  },
+});
+router.post(
+  "/users/me/avatar",
+  auth,
+  upload.single("avatar"),
+  async (req, res) => {
+    const buffer = await sharp(req.file.buffer)
+      .resize({ width: 250, height: 250 })
+      .png()
+      .toBuffer();
+    req.user.avatar = buffer;
+    await req.user.save();
+    res.send();
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+router.delete(
+  "/users/me/avatar",
+  auth,
+  async (req, res) => {
+    req.user.avatar = undefined;
+    await req.user.save();
+    res.send();
+  },
+  (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+  }
+);
+
+router.get("/users/:id/avatar", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user || !user.avatar) {
+      throw new Error();
+    }
+    res.set("Content-Type", "image/png");
+    res.send(user.avatar);
+  } catch (error) {
+    res.status(400).send(error);
   }
 });
 

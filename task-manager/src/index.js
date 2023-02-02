@@ -6,8 +6,11 @@ const taskRouter = require("./routers/task");
 const app = express();
 
 const port = process.env.PORT || 3000;
-
 app.use(express.json());
+
+/* app.use((req, res, next) => {
+  res.status(503).send("Service Unavailable. Maintenance Mode...!");
+}); */
 app.use(userRouter);
 app.use(taskRouter);
 
@@ -30,3 +33,30 @@ const myBrypt = async (pass) => {
 };
 
 myBrypt("manu"); */
+
+// testing jsonwebtoken
+/* const jwt = require("jsonwebtoken");
+
+const myJwtFunction = async () => {
+  const token = await jwt.sign({ _id: "abcchikla123" }, "thisismysecretsign");
+  console.log(token);
+
+  const isVerified = await jwt.verify(token, "thisismysecretsign");
+  console.log(isVerified);
+};
+myJwtFunction(); */
+
+// const Task = require("./models/task");
+// const User = require("./models/user");
+
+// const funct = async () => {
+// const task = await Task.findById("63d8f1b6b9bc71c5fbcf1051");
+// await task.populate("createdBy");
+// console.log(task.createdBy);
+//
+// const user = await User.findById("63d8f148b9bc71c5fbcf1041");
+// const user = await User.findById("63d8fbc3a15e7468b9b41b07");
+// await user.populate("tasks");
+// console.log(user.tasks);
+// };
+// funct();
