@@ -5,7 +5,7 @@ const taskRouter = require("./routers/task");
 
 const app = express();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 app.use(express.json());
 
 /* app.use((req, res, next) => {
@@ -38,7 +38,7 @@ myBrypt("manu"); */
 /* const jwt = require("jsonwebtoken");
 
 const myJwtFunction = async () => {
-  const token = await jwt.sign({ _id: "abcchikla123" }, "thisismysecretsign");
+  const token = await jwt.sign({ _id: "abcchikla123" }, "process.env.JWT_SECRET");
   console.log(token);
 
   const isVerified = await jwt.verify(token, "thisismysecretsign");
